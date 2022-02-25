@@ -70,4 +70,183 @@ Cglib动态代理是通过生成目标类的子类实现的动态代理，且fin
 代理类和被代理类必须实现同一个接口；
 代理类持有被代理类对象realSubject；
 客户端持有的实际对象时Proxy。
+1.19	AOP（面向切面编程）--代理模式
+将一些系统性相关（日志、事务、安全）的编程工作，独立提取出来，独立实现，作为一个公共切面切入到相关的业务逻辑中。
+将业务逻辑代码与公共功能代码分离开，使开发人员能更专注地编写业务逻辑代码。
+在不改变业务逻辑代码的前提下，在业务逻辑之前、之后、或者周围添加横切关注点(切面)，对目标功能进行扩展。
+
+1.19.1	AOP的应用场景
+事务（数据库更新），权限（web请求权限），日志（每一次更新记录）
+
+1.19.2	AOP基本术语切点、切面、连接点、通知等
+	通知：定义AOP切面执行的工作，以及切面执行的时间。
+（Before、After、After-returning、After-throwing、Around）
+	切点：定义切面执行的地点，满足配置条件的目标方法（在什么地方执行切面）。
+	连接点：切点的全集。一个程序可能会有多个切面，不同切面映射需要不同切点。
+	切面：切点+通知。在什么时候、什么地点、执行什么工作。
+
+1.19.3	AOP的两种实现方式(注解、xml文件)
+	XML方式
+ 
+ 
+普通工程通过 初始化Spring。
+在执行DogService类中的方法时，执行前会先执行PointCutXmlConf类中的beforeAdvice方法，执行后会执行PointCutXmlConf类中的afterAdvice方法。
+
+	注解方式
+Java配置类
+ 
+@ComponentScan定义自动扫描的包
+@EnableAspectJAutoProxy = <aop:aspectj-autoproxy/>
+Java切面类
+ 
+普通工程通过 初始化Spring容器。
+
+1.19.4	AOP原理
+	JDK（动态）代理（反射）
+利用反射机制生成一个实现代理接口的匿名类，在调用具体方法前调用InvokeHandler来处理。
+动态代理实际上是程序在运行中，根据被代理的接口来动态生成代理类的class文件，并加载class文件运行的过程。
+而动态生成的代理类已经继承了Proxy类，由于Java的单继承，所以只能靠实现被代理类的接口的形式，而不是靠继承被代理类的形式。
+JVM编译完成时并没有实际的字节码文件，而是在运行时动态生成类字节码，并加载到JVM中。 
+优点：通过反射，可以有效减少代理类的数量，使用更灵活；
+缺点：反射代理，比较消耗系统性能。
+目标对象实现接口，代理对象可以不实现业务接口。
+ 
+主要类：
+Java.lang.reflect.Proxy以及Java.lang.reflect. InvocationHandler接口(事件处理器)
+Proxy类：创建一个代理对象
+InvocationHandler接口：代理实例的调用处理程序。
+主要方法：
+ 
+JDK代理类实例：
+ 
+也可以把InvocationHandler独立出来：
+ 
+
+	cglib代理
+利用ASM（开源的Java字节码编辑库，操作字节码）开源包，将代理对象类的class文件加载进来，通过修改其字节码生成子类来处理。
+由于被代理类没有实现接口，所以运行时在内存中动态生成一个子类对象从而实现对目标对象的扩展。子类对象会重写目标对象的方法，所以目标对象不能为final类。
+代理类和目标类都无需实现业务接口。
+ 
+
+
+1.20	Bean
+1.20.1	Spring Bean的作用域
+Singleton：默认值，创建容器时创建Bean，以单例方式存在。
+Prototype：每次请求都会创建一个新的Bean实例。
+Request：每个HTTP请求都会创建一个新的Bean。
+Session：同一个session共享一个Bean。
+
+1.20.2	Spring的单例Bean的线程安全问题
+如果单例Bean不定义可变的成员变量，则线程是安全的。
+如果单例Bean状态可变，且同时被多个线程调用，则可能存在线程安全问题。
+
+解决方法：
+Bean中尽量避免可变的成员变量；
+	在类中定义ThreadLocal成员变量，将线程需要的可变变量保存在ThreadLocal中。
+1.20.3	Bean的生命周期
+实例化、属性赋值、初始化、销毁。
+ 
+ 
+	容器寻找Bean的定义并利用反射进行实例化；
+	依赖注入（IOC），根据Bean的配制，进行Bean的属性注入；
+	处理Aware接口
+Bean实现BeanNameAware接口：setBeanName(),传递Spring配置文件中Bean的ID；
+Bean实现BeanFactoryAware接口：setBeanFactory(),传递Spring工厂；
+Bean实现ApplicationContextAware接口：setApplicationContext(),传入Spring上下文；
+	Bean存在实现了BeanPostProcessors接口的实例A：实例A的postProcessBeforeInitialization();
+	Spring配置文件中配置init-method方法；
+	Bean存在实现了BeanPostProcessors接口的实例A：实例A的postProcessAfterInitialization();
+
+完成Bean的创建-------Bean使用中
+
+	Bean实现了DisposableBean接口：调用destroy()方法；
+	Spring配置文件中配置destory-method方法
+
+注：BeanPostProcessors接口的两个方法，主要是在Bean实例化之后、初始化前后，允许对bean实例进行自定义的修改。
+1.20.4	Spring创建Bean的三种方式
+	通过构造方法创建
+目标类提供构造函数，由Spring自带的工厂(BeanFactory)维护和管理目标类。
+ 
+	通过静态工厂方法创建
+目标类提供一个静态工厂方法，把类交给提供的静态工厂管理，Spring只是帮我们调用了静态工厂创建实例的方法，而实际的创建过程在静态工厂方法中。
+ 
+	通过实例工厂方法创建
+目标类提供一个实例工厂方法(需先定义实例工厂Bean)，把创建实例的工厂类userFactory交给Spring管理，创建实例的过程由配置的实例工厂userFactory内部实现，Spring管理调用实例工厂类的方法进行实例创建。
+ 
+1.21	~~Spring实现了哪些后置处理器
+
+1.22	Spring事务(@Transaction)
+1.22.1	事务的四大特性
+	原子性
+从操作的角度来描述，事务中的各个操作要么都成功，要么都失败；
+	一致性
+从数据的角度来描述，事务中的数据从一个一致性状态变换到另一个一致性状态。
+比如：转账前A有1000， B有1000。转账后A+B也得是2000。
+	隔离性
+并发时，每个事务不能被其他事务的操作数据所干扰，多个并发事务之间互相隔离。
+	持久性
+一个事务一旦被提交，那它对数据库中数据的改变就是永久性的。
+1.22.2	事务并发问题
+	脏读
+	一个事务读取了另一个事务尚未提交的数据。
+	初值age=10，事务A修改age=20，事务B读取age=20，事务A回滚age=10。
+	丢失更新
+	两个事务同时更新一行数据，最后一个事务的更新会覆盖前一个事务的更新。
+	事务A更新age=50 ->> 事务B更新age=30。事务A的更新被覆盖。
+	幻读
+一个线程中的事务读到了另一个线程中已经提交的insert/delete的数据。
+	事务多次读取同一个数据，数据总量不一致。（前后多次读取，数据总量不一致）
+事务A查询数据总量100条，事务B新增数据100条，数据A查询总量为200条。
+	不可重复读
+一个线程中的事务读到了另一个线程中已经提交的update的数据。(前后内容不一样)
+	事务多次读取同一条数据，数据内容不一样。（前后多次读取，数据内容不一样）
+	事务A读age=10，事务B修改age=20(且提交事务)，事务A读age=20。
+不可重复读的重点是修改，幻读的重点是新增或删除。
+
+1.22.3	事务的传播行为
+一个事务方法被另一个事务方法调用的时候，当前事务方法如何运行。
+多个具有事务控制的service互相调用时的事务传播问题。
+	PROPAGATION_REQUIRED
+如果当前没有事务，就新建一个事务，如果已经存在一个事务中，加入到这个事务中。这是最常见的选择。
+	PROPAGATION_SUPPORTS
+支持当前事务，如果当前没有事务，就以非事务方式执行。
+	PROPAGATION_MANDATORY
+	使用当前的事务，如果当前没有事务，就抛出异常。
+	PROPAGATION_REQUIRES_NEW
+	新建事务，如果当前存在事务，把当前事务挂起。
+	PROPAGATION_NOT_SUPPORTED
+	以非事务方式执行操作，如果当前存在事务，就把当前事务挂起。
+	PROPAGATION_NEVER
+	以非事务方式执行，如果当前存在事务，则抛出异常。
+	PROPAGATION_NESTED
+如果当前存在事务，则在嵌套事务内执行。如果当前没有事务，则执行与PROPAGATION_REQUIRED类似的操作。
+
+1.22.4	事务的隔离级别（类似数据库的事务隔离级别）
+	DEFAULT:使用后端数据库默认的隔离级别
+	READ_UNCOMMITTED: 读未提交
+	READ_COMMITTED:读已提交
+	REPEATABLE_READ: 重复读
+	SERIALIZABLE: 事务串行化
+
+1.22.5	Spring管理事务的方式
+	编程式事务，在代码中硬编码；
+ 
+	声明式事务，在配置文件中配置（基于XML和注解）
+通过AOP功能，对@Transaction标注的类或方法前后进行拦截，将事务处理的相关功能编织到拦截的方法中。
+1.22.6	Spring事务的基本原理（代理）
+Spring在启动时会去解析生成相关的Bean，在使用事务的时候，会为标注为@Transaction的类和方法生成一个代理，通过代理对这些类进行事务（提交、回滚）处理。
+
+
+1.22.7	事务不生效的场景
+	数据库引擎不支持事务。MyISAM不支持事务，InnoDB支持事务；
+	入口方法必须是public方法，以便Spring使用AOP切入该方法；换言之，只有通过AOP切入的方法，才能使事务生效；
+	Spring的事务管理只对RuntimeException及其子类中的运行期异常进行回滚；
+	必须使用@EnableTransactionManagement或者在xml中配置开启事务管理；
+	事务所在的类必须被Spring代理；
+	业务和事务入口必须在同一个线程里；即事务方法中新开的线程不属于当前事务；
+	同一个类中一个无事务的方法调用另一个有事务的方法，事务不生效(类内部方法调用事务不生效)；
+
+
+
+
 
