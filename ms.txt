@@ -1,1 +1,73 @@
 hello
+1.16	Spring 框架中都用到了哪些设计模式？
+	工厂模式：BeanFactory就是简单工厂模式的体现，用来创建对象的实例；
+	单例模式：Bean默认为单例模式。
+	代理模式：Spring的AOP功能用到了JDK的动态代理和CGLIB字节码生成技术；
+	模板方法：用来解决代码重复的问题。比如. RestTemplate（封装HTTP请求）。
+
+1.17	控制反转（IOC）
+将创建管理对象的工作交给容器来做。在容器初始化（或在某个时间节点）通过反射机制创建好对象，在使用时直接从容器中获取。
+	控制反转：将对象的控制权反过来交给容器管理。
+	依赖注入（DI）：将对象依赖写入配置文件，在创建有依赖关系的对象时，由IOC容器来注入依赖的兑现。构造器注入、setter方法注入。
+
+1.17.1	实现原理（流程）：（反射+XML技术）
+利用（反射+工厂）技术，根据配置文件中给出的类名生成相应的对象。
+Class.forName(className).newInstance。
+	Tomcat启动Spring容器；
+	初始化Spring容器，加载application.xml配置文件；
+	获取扫描包下所有class文件；
+	解析class中的注解信息；
+	通过反射实例化相应bean对象，以<beanId,bean>的形式保存集合，存储在IOC容器中。
+	通过ApplicationContext的getBean方法获取Bean。
+
+1.17.2	反射和new
+ 
+	new只能用于编译期就能确定的类型, 而反射可以在运行时才确定类型并创建其对象。例如：Spring是事先写好的框架，在编译时其内部处理并不知道将来用户要加载哪些类到IOC容器中，此时就需要使用到反射；
+	使用new出来的对象无法访问私有属性，使用反射出来的对象可以通过setAccessible访问私有属性。
+	使用反射可以使程序代码更加灵活，使用运行期的动态加载。
+
+1.17.3	IOC的好处
+创建Bean及其依赖对象的工作交给IOC容器管理，业务代码只需要getBean就行了。将依赖关系写入配置文件中，有修改时，直接修改配置文件即可，而不用去业务代码中每一个使用Bean的地方修改。
+
+1.17.4	IOC类型
+	构造注入：通过容器触发一个类的构造器来实现的，该类有一系列参数，每个参数代表一个对其他类的依赖。（对象的依赖关系可在构造函数中完成）。
+	Setter方法注入：容器通过调用无参构造器或无参static方法实例化bean之后，调用bean的setter方法。
+
+1.17.5	IOC的初始化过程
+资源定位、资源载入BeanDefinition、<BeanName、BeanDefiniton>注册到IOC容器。
+ 
+	Resource定位（Bean的定义文件定位），返回Resource对象
+Resource对象与对应ApplicationContext类型如下：
+FileSystemResource(绝对路径定位)：FileSystemXmlApplicationContext;
+ClassPathResourcee(类路径定位)：ClassPathXmlApplicationContext;
+ServletContextResource(web应用根目录)：XmlWebApplicationContext;
+UrlResource：访问网络资源的实现类。例如file: http: ftp:等前缀的资源对象;
+ByteArrayResource: 访问字节数组资源的实现类。
+
+@Configuation：AnnotationConfigApplicationContext
+
+Spring提供ResourceLoader接口用于实现不同的Resource加载策略，所有的ApplicationContext均实现了ResourceLoader。
+
+	将Resource定位好的资源载入到BeanDefinition
+加载Resource对象中的Bean配置成BeanDefinition，如果Bean有依赖关系，则使用占位符（getBean时，将占位符替换成相应的Bean）暂时代替。
+
+	将<BeanName, BeanDefinition>注册到IOC容器中
+
+1.18	静态代理和动态代理
+在不修改目标对象功能的前提下，对目标对象功能进行扩展。
+JDK动态代理只能对实现了接口的类生成代理，而不能针对类 。
+CGLIB是针对类实现代理，主要是对指定的类生成一个子类，覆盖其中的方法 。
+
+1.18.1	final方法如何进行动态代理
+Cglib动态代理是通过生成目标类的子类实现的动态代理，且final方法不允许被子类重写，所以无法通过cglib实现final方法的动态代理。
+	而JDK动态代理，是通过反射的方式，生成代理接口的子类，反射可以
+1.18.2	静态代理
+在编译期间就生成了代理类，编译完成后是一个实际的class文件。
+优点：在编译时就产生字节码文件，执行效率高。
+缺点：目标对象过多，会产生很多代理类。
+代理对象和目标对象都要实现同一个业务接口。
+ 
+代理类和被代理类必须实现同一个接口；
+代理类持有被代理类对象realSubject；
+客户端持有的实际对象时Proxy。
+
