@@ -333,6 +333,93 @@ ResultSetHandler 	负责将JDBC返回的ResultSet结果集对象转换成List类
 	返回的代理对象可以拦截到目标对象的每一个执行。
 以ParameterHandler的创建为例：
 
+3	~~~SpringBoot
+3.1	什么是SpringBoot
+约定优于配置，目的是简化Spring应用的初始搭建以及开发过程。
+3.2	SpringBoot的核心
+3.2.1	依赖管理
+Maven主导，父项目做依赖管理（自动版本仲裁）。即spring-boot-starter-parent提供相关的 Maven 默认依赖，使用它之后，常用包的依赖就可以省去 version 标签。
+3.2.2	自动配置
+@SpringBootApplication = @SpringBootConfiguration + @EnableAutoConfiguration + @ComponentScan
+	@SpringBootConfiguration
+和Configuration注解一样，标注当前类是配置类，并会将当前类内生命的Bean交给IOC容器进行管理。
+	@EnableAutoConfiguration
+@AutoConfigurationPackage
+使用@Import，将SpringBoot启动类所在包及其子包里面所有组件加载到Spring容器中。
+ 
+@Import(AutoConfigurationImportSelector.class)
+使用内部工具类SpringFactoriesLoader，查找classpath上所有jar包中的META-INF/spring.factories进行加载，实现将配置类信息交给SpringFactory加载器进行一系列的容器创建过程。(spring.factories文件中配置了需要进行加载的Java配置类)。
+
+	@ComponentScan
+指定扫描的包路径，如果没有指定，则将SpringBootApplication的包路径作为扫描的基本包路径。
+
+3.3	约定优于配置，体现在哪些方面
+	默认的配置文件：application.properties 或 application.yml 文件。
+	默认通过 spring.profiles.active 属性来决定运行环境时的配置文件。
+	Maven的目录结构。默认有resources文件夹,存放资源配置文件。
+3.4	如何自定义starter
+命名规范：官方推出的starter 以spring-boot-starter-xxx的格式来命名，第三方开发者自定义的starter则以xxxx-spring-boot-starter的规则来命名。
+3.4.1	新建maven工程，并导入自动配置依赖包
+ 
+3.4.2	创建JavaBean(业务逻辑)
+ 
+3.4.3	编写配置类
+@Conditional接口：按照一定条件进行判断，满足条件给容器注册Bean。
+常用实现：@ConditionalOnClass、@ConditionOnBean。
+也可配置@Import注解，引入其他的配置类。
+ 
+3.4.4	Resources下创建META-INF/spring.factories
+ 
+
+3.5	SpringBoot开启热启动
+ 
+
+3.6	@SpringBootApplication
+@Configuration+@EnableAutoConfiguration+@ComponentScan
+	@Configuration
+生命当前类是一个配置类。
+	@EnableAutoConfiguration
+SpringBoot实现自动化配置的核心注解，该注解把spring应用所需的bean注入容器中。
+	@ComponentScan
+扫描注解所在配置类包及子包中类中的@Service,@Repository,@Component,@Controller等注解，也可以通过basePackages属性来指定需要进行扫描的包。
+
+3.7	@ConfigurationProperties
+把application.properties/yml配置文件中的属性映射到一个java类中
+
+3.8	com.mysql.jdbc.Driver和com.mysql.cj.jdbc.Driver的区别	
+com.mysql.jdbc.Driver 是 mysql-connector-java 5中的；
+com.mysql.cj.jdbc.Driver 是 mysql-connector-java 6及以上中的；
+
+JDBC连接mysql5需使用com.mysql.jdbc.Driver;
+JDBC连接mysql6需使用com.mysql.cj.jdbc.Dricer，同时需要指定时区serverTimezone；
+
+设定时区时，serverTimezone=UTC比中国时间早8个小时，若在中国，可设置serverTimezone=Shanghai或者serverTimezone=Hongkong。
+
+
+3.9	SpringBoot整合hibernate
+3.9.1	@Table和@Entity的区别
+@Entity说明这个class是实体类，并且使用默认的orm规则，即class名即数据库表中表名，class字段名即表中的字段名；如果想改变这种默认的orm规则，就要使用@Table来改变class名与数据库中表名的映射规则。
+
+
+
+
+3.10	SpringBoot整合Mybatis
+ 
+ 
+ 
+ 
+3.11	Hibernate和mybatis的区别？
+3.11.1	Hibernate
+	可自动生成SQL语句，无需关心SQL的生成与结果映射，可以更专注于业务代码；
+	常用于管理系统业务，业务逻辑>性能；
+	可自动生成数据表结构；
+	移植性强，比如mysql切换到oracle只需要切换修改方言配置，在生成SQL语句的时候hibernate会自动进行切换；
+3.11.2	Mybatis
+	需要手动编写SQL语句，以及ResultMap(对象属性与数据表列名的映射)
+	常用于互联网业务(比如网页的响应)，对性能的追求更高；
+	需要手动创建数据库及数据表；
+	数据库发生变更时，需要对新数据库的SQL语句进行重新适配。
+
 
 
 
