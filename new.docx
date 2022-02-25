@@ -210,5 +210,175 @@ Stream操作是延时执行的，会等到需要结果的时候才会去真正�
 	orElseThrow()
 	value值为null时，直接抛出一个异常
 11.4.3	示例
+ 	集合框架
+1	介绍一下java的集合框架
  
+集合代表了一组对象，可以对一个集合类的对象进行增删改查操作（类比数据库）。
+所有集合类都位于java.util包下，主要由两个接口派生而成：Collection和Map
+2	List
+2.1	ArrayList的扩容机制
+
+2.2	数组和ArrayList的区别？Arraylist是如何扩容的？
+空间大小：数组大小是固定的，ArrayList大小是可动态变化的；
+存储内容：数组可包含基本数据类型和对象，而ArrayList只可包含对象；
+效率：数组比ArrayList更高效。ArrayList的数组扩容影响效率。
+
+ArrayList底层是数组，扩容时，newCapacity = oldCapacity+(oldCapacity >> 1)，即扩容到当前大小的1.5倍，再将原数组数组转移到新数组。
+
+2.3	如何保证ArrayList的线程安全？
+2.3.1	Vector
+把ArrayList 的所有方法都加上synchronized，性能低。
+2.3.2	SynchronizedList
+Collections.synchronizedList把一个普通的ArrayList包装成一个线程安全的数组容器，原理也是给所有的方法加上synchronized。
+
+2.3.3	CopyOnWriteArrayList
+ 
+读写分离，常用于读多写少(写入时拷贝数组很耗时)的场景，读操作不加锁，给写操作加上可重入锁。
+CopyOnWriteArrayList有一个array数组和一个可重入锁lock，array数组用于存放具体元素，lock用于在执行修改操作时对修改操作进行加锁。
+加锁后，先拷贝一份存储数组，然后添加元素到拷贝的数组中，然后用拷贝的数组替换原数组。
+2.4	ArrayList在JDK7和JDK8中的区别？
+JDK7初始化时，默认创建一个容量为10的数组；
+JDK8初始化时，默认创建一个空数组，在第一次添加元素时才会去创建一个容量为10的数组；
+
+2.5	ArrayList新增过程
+	新增前，先校验ArrayList中的数组长度是否够用，如果不够用，则进行扩容；
+	扩容时，生成一个原始数组容量大小1.5倍的新数组，然后将原始数组中的数据通过Arrays.copy复制到新数组中；
+	将新增元素添加到新数组中的相应位置。
+ 
+
+3	Map
+3.1	Hash冲突解决方法
+开放地址法：探测序列，查找一个空的单元插入。
+再哈希法：准备多个hash函数，当发生冲突时，依次使用下一个hash函数。
+链地址法：对于相同的hash值，使用链表进行连接。
+
+3.2	HashMap遇见哈希冲突会如何怎么办？HashMap是线程安全的吗？ 
+HashMap结构由桶加链表组成，桶是一个存储hash值的数组，每当添加一个新元素到HashMap中时，首先会根据hash算法计算出一个hash值，然后根据hash值找到对应的桶的位置，将该值存入桶对应的链表中。在java8之后，若链表大小超过8后，会将桶对应的链表转换成红黑树，以提高查询效率。
+HashMap不是线程安全的。
+3.3	HashMap在高并发下会有什么问题？
+3.3.1	循环链表(死循环)
+原因：并发+头插
+Jdk1.7在高并发下，HashMap产生死循环，造成CPU100%负载：HashMap在存储时，若size超过当前最大容量*负载因子时，会增加桶的数目，进行HashMap数组扩容(resize())，在resize过程中，会调用transfer()方法将链表转换成新链表，在多线程情况下可能导致链表回路，从而导致死循环。
+
+	并发扩容操作
+ 
+扩容时，会调用transfer方法将旧的元素重新hash后放到新的table中。
+
+Jdk1.8中HashMap的put元素操作由1.7的头插改为尾插，避免了死循环问题。
+3.3.2	fail-fast
+在高并发下，HashMap触发fail-fast：一个线程利用迭代器进行Map遍历时，另一个线程做插入删除操作，造成迭代的fail-fast。
+
+
+3.4	JDK7 HashMap扩容的两个条件
+	当前数据存储的数量(size())必须大于等于阈值(默认大小为16，负载因子0.75，阈值12);
+	加入的数据发生了hash碰撞，如果加入的数据未发生hash碰撞，就算存储数量超过了阈值，也有可能不会扩容。
+
+3.5	HashMap扩容流程
+	扩容：创建一个新的Entry空数组，长度是原数组的2倍。
+	ReHash：遍历原Entry数组，把所有的Entry重新Hash到新数组。
+
+
+
+
+3.6	JDK8 HashMap中链表转换成红黑树
+3.6.1	何时转换
+当链表长度到达阈值8时，如果HashMap的数组大小<64，则进行扩容；如果数组大小超过了64，则将链表转换成红黑树
+	当链表长度回退到阈值6时，则将红黑树回转成链表。
+3.6.2	为什么两个阈值分别为6和8？
+根据泊松分布算出，当链表中的元素个数为8时，出现的几率是亿分之六，基本上可忽略不计；
+红黑树的转换需要时间和空间，为了防止HashMap在链表和红黑树之间频繁转换，故设置高于8转成红黑树、低于6转成链表，中间留了一个7作为缓冲。
+3.6.3	为什么要转换成红黑树？
+链表是线性查找，平均时间复杂度为n/2；红黑树为二分查找，平均时间复杂度为log2(n)。
+举例：若hash算法写的不好，一个桶中冲突1024个key，使用链表平均需要查询512次，但是红黑树仅仅10次，红黑树的引入保证了在大量hash冲突的情况下，HashMap还具有良好的查询性能。
+3.7	HashMap在JDK7和JDK8中的区别
+	底层结构
+JDK7：数组+链表，Entry。JDK8：数组+链表/红黑树，Node。
+	哈希表为空时
+JDK7：使用inflateTable()初始化一个数组。JDK8：直接调用resize()扩容。
+	Hash冲突时插入数据
+JDK7：头插(高并发下可能会发生死循环)。JDK8：尾插。
+	Hash函数
+JDK7：直接使用key的hashCode值,扰动复杂(对hash值一共进行5次异或和4次右移)。
+JDK8：(h = key.hashCode()) ^ (h >>> 16)，结果更散列、扰动简单。
+	扩容策略
+JDK7：重新计算hash。
+JDK8	：e.hash & oldCap,如果结果为0,位置不变；不为0,新的位置为老位置+老数组长度。
+3.8	红黑树(二分查找)
+3.8.1	二叉树、平衡二叉树
+	二叉树
+每个节点下有1个或者2个子节点，左节点<=父节点<=右节点，最大查找长度为树的高度。
+但是在极端情况下，二叉树可能会退化为链表。
+ 
+
+	平衡二叉树(AVL树)
+在二叉树的基础上，每次新增节点的时候，都会通过左旋和右旋操作，来保证左子树和右子树的高度差不超过1，防止二叉树退化成链表。
+ 
+
+3.8.2	红黑树
+ 
+是一种平衡二叉树，它有以下规则：
+	每一个节点，要么是黑色的，要么是红色的；
+	根节点是黑色的；
+	叶子节点(空)是黑色的；
+	红色节点不能同时存在；
+	从一个节点到它的任意根节点，所经过的黑色节点数必须是相同的。
+
+在插入节点时，会通过变色和旋转两种操作，来保证红黑树满足上述五个条件。
+
+红黑树是一种弱平衡二叉树，相对于平衡二叉树，插入和删除时旋转次数少，所以在插入和删除较多的情况下，使用红黑树；而在修改少，查找次数多的情况下，使用平衡二叉树。
+
+3.9	Hashmap的底层实现
+Jdk1.7：数组+链表
+ 
+Jdk1.8：数组+链表/红黑树
+ 
+3.10	HashSet底层实现
+hashSet底层是基于HashMap实现的。
+3.11	HashSet和TreeSet的区别
+HashSet：无序，由哈希表实现，支持null，较快。
+TreeSet：有序，由树实现，不支持null，较慢。
+
+3.12	ConcurrentHashMap
+HashMap在并发时不是线程安全的；
+HashTable通过synchronized来保证线程安全，每个map只有一把锁，效率低下；
+通过Collectrions.synchronizedMap(map类型对象)进行加锁，也是锁全表，效率低下。
+3.12.1	ConcurrentHashMap原理
+jdk1.7：segment数组（存储锁）+hashEntry数组，segment继承自ReentrantLock，采用锁分段技术来保证线程安全，将数据分为一段一段的，给每段数据各分配一把锁，不同数据段之间的读写互不影响，效率高；
+ 
+jdk1.8：Node数组+链表/红黑树，并发控制使用 synchronized 和 CAS 来操作。
+synchronized只锁定当前链表或红黑二叉树的首节点，这样只要hash不冲突，就不会产生并发，效率又提升N倍。
+Node和HashEntry的元素value和指针next时用volatile修饰的，所以在多线程环境下线程A修改节点的value或者新增节点的时候是对线程B可见的。所以HashMap的get方法不需要加锁。
+ 
+3.12.2	ConcurrentHashMap不支持key或者value为null的原因
+	不支持key为null：没有原因
+	不支持value为null：多线程环境下，如果map.get(key)返回null，就无法判断，究竟是map中没有key，还是该key对应的值就为null。
+3.12.3	为什么使用synchronized(JDK8)替换ReentrantLock(JDK7)
+	Synchronized性能提升：JDK6的锁优化，无锁->偏向锁->轻量级锁->重量级锁，锁粗化、所消除。
+	并发能力更高：CAS + synchronized锁每个链表的头节点；segment锁多个链表。
+
+3.13	HashMap的容量为什么推荐是2的幂次方？
+计算桶的数组下标算法为：i = (n - 1) & hash。
+桶的位置i = (n - 1) & hash  与操作可以实现HashMap中的数据均匀分布
+实现均匀分布可以采用%运算（hash%length），但%运算效率低下，所以采用2进制运算（hash&(length-1)），可保证元素在桶数组中的均匀分布。
+当n为2的幂次方时，hash%length与hash&(length-1)效果相同，但&速度更快。
+ 
+
+3.14	Comparable和Comparator的区别
+Comparable：排序接口(内部比较器)，实现compareTo(T t)。
+
+Comparator：比较器接口(外部比较器)，实现compare(T t1, T t2)。
+
+Collections.sort()/sort(list, new Comparator)。在设计初时有排序需求可使用Comparable，在后期扩展或新增排序需求时，可通过新增比较器进行排序。
+
+
+
+
+
+ 
+ 
+ 
+ 
+ 
+
+
 
